@@ -6,14 +6,21 @@ Using:
 ```c++
 #include "reservoir.h"
 
-int main() {
+bool get_next_item(std::FILE *fp, uint64_t &item) {
+    int rc = std::fread(&item, sizeof(item), 1, fp);
+    return rc == 1;
+}
+
+int main(int argc, char *argv[]) {
+    std::FILE *fp = argc > 1 ? std::fopen(argv[1]): stdin;
     rsvd::Reservoir<uint64_t> reservoir;
     reservoir.seed(137);
     uint64_t item;
-    while(get_next_item(item) >= 0) {
+    while(get_next_item(fp, item)) {
         reservoir.add(item);
     }
     auto sampled_items = std::move(reservoir.container());
+    if(fp != stdin) std::fclose(fp);
 }
 ```
 
