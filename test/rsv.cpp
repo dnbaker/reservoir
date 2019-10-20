@@ -13,7 +13,7 @@ int main() {
         std::fprintf(stderr, "zomgafter: %u\n", v);
     std::vector<unsigned> zomgs(mseq);
     for(auto &e: zomgs) e = std::rand();
-    rsv.add_batch(zomgs.begin(), zomgs.end());
+    rsv.add(zomgs.begin(), zomgs.end());
     size_t lt = 0, gt = 0;
     for(const auto v: rsv.container()) {
         std::fprintf(stderr, "zomgafterb: %u\n", v);
