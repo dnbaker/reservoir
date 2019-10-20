@@ -65,7 +65,7 @@ public:
         return ret;
     }
     template<typename It>
-    void add_batch(It beg, It end) {
+    void add(It beg, It end) {
         // Based on https://erikerlandson.github.io/blog/2015/11/20/very-fast-reservoir-sampling/
         if(size() < n_) {
             do {
@@ -97,7 +97,7 @@ public:
     bool full() const {return n_ == size();}
     CType       &container()       {return v_;}
     const CType &container() const {return v_;}
-};  
+};
 
 }
 

@@ -24,6 +24,19 @@ int main(int argc, char *argv[]) {
 }
 ```
 
+For very large streams where consecutive chunks are available in memory and random access is supported,
+we support a batch method with better runtime properties:
+
+```
+    rsvd::Reservoir<uint64_t> reservoir;
+    std::vector<uint64_t> buf;
+    // ... resizing, intiialization
+    while(fill_buffer(stream, buf)) {
+        reservoir.add(buf.begin(), buf.end());
+    }
+    auto sampled_items = std::move(reservoir.container());
+```
+
 Template arguments are:
 
 1. `value type`
