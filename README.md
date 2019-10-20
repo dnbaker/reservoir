@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 For very large streams where consecutive chunks are available in memory and random access is supported,
 we support a batch method with better runtime properties:
 
-```
+```c++
     rsvd::Reservoir<uint64_t> reservoir;
     std::vector<uint64_t> buf;
     // ... resizing, intiialization
