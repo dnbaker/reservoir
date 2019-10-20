@@ -25,14 +25,16 @@ int main(int argc, char *argv[]) {
 ```
 
 For very large streams where consecutive chunks are available in memory and random access is supported,
-we support a batch method with better runtime properties:
+we support a batch method with better runtime properties.
+
+The following example does 
 
 ```c++
     rsvd::Reservoir<uint64_t> reservoir;
-    std::vector<uint64_t> buf;
-    // ... resizing, intiialization
-    while(fill_buffer(stream, buf)) {
-        reservoir.add(buf.begin(), buf.end());
+    std::vector<uint64_t> buf(1000);
+    ssize_t nread;
+    while((nread = std::fread(buf.data(), sizeof(uint64_t), buf.size(), fp)) > 0) {
+        reservoir.add(buf.data(), buf.data() + nread);
     }
     auto sampled_items = std::move(reservoir.container());
 ```
