@@ -64,6 +64,31 @@ public:
         } else ret = false;
         return ret;
     }
+    template<typename It>
+    void add_batch(It beg, It end) {
+        // Based on https://erikerlandson.github.io/blog/2015/11/20/very-fast-reservoir-sampling/
+        if(size() < n_) {
+            do {
+                Emplacer<CType>::insert(v_, std::move(*beg++));
+            } while(size() < n_ && beg < end);
+            if(beg != end) t_ = n_;
+        }
+        size_t ta = std::distance(beg, end);
+        if(!ta) return;
+        for(;;) {
+            static constexpr double maxinv = 1. / std::numeric_limits<rng_type>::max();
+            const double p = double(n_) / t_;
+            unsigned g = std::log(double(rng_()) * maxinv) / std::log1p(-p);
+            std::advance(beg, g);
+            t_ += g;
+            if(beg < end) {
+                auto it = std::begin(v_);
+                std::advance(it, div_.mod(rng_()));
+                *it = std::move(*beg);
+            } else break;
+            ++t_;
+        }
+    }
     size_t size() const {
         using std::size;
         return size(v_);

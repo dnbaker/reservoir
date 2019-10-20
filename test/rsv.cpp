@@ -2,11 +2,22 @@
 
 using namespace reservoir_dogs;
 int main() {
-    Reservoir<unsigned> rsv(200);
-    for(int i = 0; i < 200; rsv.add(i++));
+    int rssz = 300;
+    int mseq = 4000000;
+    Reservoir<unsigned> rsv(rssz);
+    for(int i = 0; i < rssz; rsv.add(i++));
     for(const auto v: rsv.container())
         std::fprintf(stderr, "zomg: %u\n", v);
-    for(int i = 201; i < 4000; rsv.add(i++));
+    for(int i = rssz + 1; i < mseq; rsv.add(i++));
     for(const auto v: rsv.container())
         std::fprintf(stderr, "zomgafter: %u\n", v);
+    std::vector<unsigned> zomgs(mseq);
+    for(auto &e: zomgs) e = std::rand();
+    rsv.add_batch(zomgs.begin(), zomgs.end());
+    size_t lt = 0, gt = 0;
+    for(const auto v: rsv.container()) {
+        std::fprintf(stderr, "zomgafterb: %u\n", v);
+        v > mseq ? ++gt: ++lt;
+    }
+    std::fprintf(stderr, "counts: %zu, %zu\n", gt, lt);
 }
