@@ -4,7 +4,7 @@
 #include "./shared.h"
 #include <algorithm>
 
-namespace dogs {
+namespace DOGS {
 inline namespace priority_sampling {
 
 template<typename VT, typename FT=double, typename Cmp=std::greater<>>
@@ -32,7 +32,7 @@ struct PrioritySampler {
 
 }
 namespace priosa = priority_sampling;
-} // dogs
+} // DOGS
 
 
 #endif

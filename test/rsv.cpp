@@ -1,14 +1,14 @@
-#include "include/reservoir.h"
+#include "DOGS/reservoir.h"
 
-using namespace dogs::reservoir;
+using namespace DOGS::reservoir;
 int main() {
     int rssz = 300;
-    int mseq = 4000000;
-    Reservoir<unsigned> rsv(rssz);
+    unsigned mseq = 4000000;
+    ReservoirSampler<unsigned> rsv(rssz);
     for(int i = 0; i < rssz; rsv.add(i++));
     for(const auto v: rsv.container())
         std::fprintf(stderr, "zomg: %u\n", v);
-    for(int i = rssz + 1; i < mseq; rsv.add(i++));
+    for(int i = rssz + 1; i < int(mseq); rsv.add(i++));
     for(const auto v: rsv.container())
         std::fprintf(stderr, "zomgafter: %u\n", v);
     std::vector<unsigned> zomgs(mseq);

@@ -2,13 +2,13 @@
 #define RESERVOIR_DOGS_H__
 #include "./shared.h"
 
-namespace dogs {
+namespace DOGS {
 inline namespace reservoir {
 
 template<typename T, typename RNG=wy::WyHash<uint32_t, 16>,
          template<typename...> class Container=std::vector,
          typename...VectorTemplateArgs>
-class Reservoir {
+class ReservoirSampler {
     using rng_type = typename RNG::result_type;
     using CType = Container<T, VectorTemplateArgs...>;
 
@@ -19,11 +19,11 @@ class Reservoir {
     schism::Schismatic<uint32_t> div_;
 
 public:
-    Reservoir(size_t n): n_(n), t_(0), div_(n) {
+    ReservoirSampler(size_t n): n_(n), t_(0), div_(n) {
         Emplacer<CType>::reserve(v_, n);
     }
     template<typename...Args>
-    Reservoir(size_t n, Args &&...args): n_(n), t_(0), v_(std::forward<Args>(args)...), div_(n) {
+    ReservoirSampler(size_t n, Args &&...args): n_(n), t_(0), v_(std::forward<Args>(args)...), div_(n) {
         Emplacer<CType>::reserve(v_, n);
     }
     void seed(uint64_t s) {rng_.seed(s);}
@@ -77,8 +77,8 @@ public:
 };
 
 } // reservoir
-} // dogs
+} // DOGS
 
-namespace rsvd = dogs::reservoir;
+namespace rsvd = DOGS::reservoir;
 
 #endif /* RESERVOIR_DOGS_H__ */

@@ -30,7 +30,7 @@ we support a batch method with better runtime properties.
 The following example does 
 
 ```c++
-    rsvd::Reservoir<uint64_t> reservoir;
+    rsvd::ReservoirSampler<uint64_t> reservoir;
     std::vector<uint64_t> buf(1000);
     ssize_t nread;
     while((nread = std::fread(buf.data(), sizeof(uint64_t), buf.size(), fp)) > 0) {
