@@ -94,12 +94,7 @@ public:
     const auto &d() const {return d_;}
     const uint64_t &m32() const {assert(shortcircuit); return m32_;}
     using DivType = div_t<uint64_t>;
-    Schismatic(uint64_t d): d_(d), M_(computeM_u64(d)) {
-        CONST_IF(shortcircuit) {
-            m32_ = computeM_u32(d);
-        } else {
-            m32_ = 0;
-        }
+    Schismatic(uint64_t d): d_(d), M_(computeM_u64(d)), m32_(shortcircuit ? computeM_u32(d): 0u) {
     }
     INLINE bool test_limits(uint64_t v) const {
         assert(shortcircuit);

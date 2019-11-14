@@ -1,6 +1,6 @@
 #include "include/reservoir.h"
 
-using namespace reservoir_dogs;
+using namespace dogs::reservoir;
 int main() {
     int rssz = 300;
     int mseq = 4000000;
