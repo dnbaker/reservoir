@@ -3,22 +3,24 @@
 #include <queue>
 #include "./shared.h"
 #include <algorithm>
+#include <tuple>
 
 namespace DOGS {
 inline namespace priority_sampling {
 
-template<typename VT, typename FT=double, typename Cmp=std::greater<>>
+template<typename VT, typename FT=double>
 struct PrioritySampler {
     size_t n_;
-    Cmp cmp_;
-    std::priority_queue<std::tuple<FT, FT, VT>> heap_;
+    using Tuple = std::tuple<FT, FT, VT>;
+    std::greater<> cmp_;
+    std::priority_queue<Tuple, std::vector<Tuple>, std::greater<>> heap_;
     wy::WyHash<uint64_t, 4> gen_;
-    std::uniform_real_distribution<double> dist_;
+    std::uniform_real_distribution<FT> dist_;
     template<typename...Args>
-    PrioritySampler(size_t n, uint64_t seed=137, Args &&...args): n_(n), cmp_(std::forward<Args>(args)...), gen_(seed) {
+    PrioritySampler(size_t n, uint64_t seed=137, Args &&...args): n_(n), gen_(seed) {
     }
     void add(VT &&vt, FT weight) {
-        auto p = weight / dist_(gen_);
+        FT p = weight / dist_(gen_);
         if(heap_.size() < n_ + 1) {
             heap_.emplace(p, weight, std::move(vt));
         } else {
