@@ -1,6 +1,7 @@
 #ifndef PRIORITY_SAMPLING_H__
 #define PRIORITY_SAMPLING_H__
 #include <queue>
+#include <unordered_map>
 #include "./shared.h"
 #include <algorithm>
 #include <tuple>
