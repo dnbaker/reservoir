@@ -5,7 +5,7 @@
 namespace DOGS {
 inline namespace reservoir {
 
-template<typename T, typename RNG=wy::WyHash<uint32_t, 16>,
+template<typename T, typename RNG=wy::WyHash<uint32_t, 8>,
          template<typename...> class Container=std::vector,
          typename...VectorTemplateArgs>
 class ReservoirSampler {
