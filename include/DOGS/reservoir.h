@@ -105,24 +105,23 @@ public:
     void seed(uint64_t s) {rng_.seed(s);}
     bool add(T &&x, double weight=1.) {
         std::uniform_real_distribution<double> urd;
-        bool ret = true;
+        if(weight <= 0.) return false;
         if(size() < n()) {
             v_.push(std::make_pair(std::pow(urd(rng_), 1. / weight), std::move(x)));
             if(v_.size() == n_) {
                 x_ = std::log(urd(rng_)) / std::log(v_.top().first);
             }
-        } else {
-            x_ -= weight;
-            if(x_ < 0.) {
-                auto t = std::pow(v_.top().first, weight);
-                v_.pop();
-                auto t1 = urd(rng_) * (1. - t) + t; // Uniform between t and 1
-                auto r = std::pow(t1, 1. / weight);
-                v_.push(std::make_pair(r, std::move(x)));
-                x_ = std::log(urd(rng_)) / std::log(v_.top().first);
-            } else ret = false;
+            return true;
+        } else if((x_ -= weight) <= 0.) {
+            auto t = std::pow(v_.top().first, weight);
+            v_.pop();
+            auto t1 = urd(rng_) * (1. - t) + t; // Uniform between t and 1
+            auto r = std::pow(t1, 1. / weight);
+            v_.push(std::make_pair(r, std::move(x)));
+            x_ = std::log(urd(rng_)) / std::log(v_.top().first);
+            return true;
         }
-        return ret;
+        return false;
     }
     size_t size() const {
         using std::size;
