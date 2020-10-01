@@ -26,4 +26,8 @@ int main() {
     auto t6 = std::chrono::high_resolution_clock::now();
     long long unsigned d1 = (t2 - t).count(), d2 = (t4 - t3).count(), d3 = (t6 - t5).count();
     std::fprintf(stderr, "First two tries: %llu/%llu. One thread: %llu. Ratio: %g\n", d1, d2, d3, double(d3) / std::max(d1, d2));
+    tmp.add_range(size_t(0), ind.size());
+    tmp.add_range(size_t(0), ind.size(), weights.data());
+    auto ret3 = DOGS::CalaverasReservoirSampler<uint32_t>::parallel_create(0, ind.size(), n, /*nthreads=*/8, weights.data());
+    auto ret4 = DOGS::CalaverasReservoirSampler<uint32_t>::parallel_sample_weights(weights.data(), weights.data() + ind.size(), n, 8, 13);
 }

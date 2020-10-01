@@ -20,7 +20,7 @@ class ReservoirSampler {
     CType v_;
     RNG rng_;
     schism::Schismatic<IT> div_;
-    static_assert(std::is_integral_v<IT>, "integer type must be integral");
+    static_assert(std::is_integral_v<IT>, "integer type must be integral");;
 
 public:
     ReservoirSampler(size_t n): n_(n), t_(0), div_(n) {
@@ -149,48 +149,48 @@ class CalaverasReservoirSampler {
     static_assert(std::is_integral_v<IT>, "integer type must be integral");
     static_assert(sizeof(rng_type) == sizeof(IT), "Ensure RNG type and integral type are of the same size");
 public:
-    CalaverasReservoirSampler(size_t n): n_(n), t_(0), div_(n) {
-        v_.getc().reserve(n);
-    }
-    template<typename...Args>
-    CalaverasReservoirSampler(size_t n, Args &&...args): n_(n), t_(0), v_(std::forward<Args>(args)...), div_(n) {
+    CalaverasReservoirSampler(size_t n, uint64_t seed=0): n_(n), t_(0), rng_(seed), div_(n) {
         v_.getc().reserve(n);
     }
     void seed(uint64_t s) {rng_.seed(s);}
-    template<typename IT1, typename IT2, typename WIT=double>
-    void add(IT1 beg, IT2 end, WIT *wptr=static_cast<WIT *>(nullptr)) {
-        if(wptr)
-            while(beg != end) add(*beg++, *wptr++);
+    template<typename WIT=double*>
+    void add_range(size_t beg, size_t end, WIT w=static_cast<WIT>(nullptr)) {
+        if(w)
+            while(beg != end) add(beg++, *w++);
+        else
+            while(beg != end) add(beg++);
+    }
+    template<typename IT1, typename WIT=double *>
+    void add(IT1 beg, IT1 end, WIT wbeg=static_cast<WIT>(nullptr)) {
+        using OT = std::integral_constant<bool, std::is_integral_v<IT1>>;
+        if(wbeg)
+            while(beg != end) add(*beg++, *wbeg++);
         else
              while(beg != end) add(*beg++);
     }
-    template<typename IT1, typename IT2, typename WIT>
-    void add(IT1 beg, IT2 end, WIT wbeg) {
-        while(beg != end) add(*beg++, *wbeg++);
-    }
 #if 0
-    template<typename IT1, typename IT2>
-    void add(IT1 beg, IT2 end) {
-        while(beg != end) add(*beg++);
-    }
-#endif
-    template<typename It, typename WIT=double>
-    static auto parallel_create(It beg, It end, size_t n, int nthreads=4, WIT *ptr=static_cast<WIT *>(nullptr), size_t threshold=100) {
+    static auto parallel_create(int64_t beg, int64_t end, size_t n, int nthreads=4, WIT *ptr=static_cast<WIT *>(nullptr), uint64_t seed=0, size_t threshold=100) {
         auto dist = std::distance(beg, end);
         if(dist < threshold || nthreads <= 1) {
-            CalaverasReservoirSampler sampler(n);
+            CalaverasReservoirSampler sampler(n, seed);
             sampler.add(beg, end, ptr);
             return std::move(sampler.container());
         }
         auto nperblock = (dist + (nthreads - 1) ) / nthreads;
         std::vector<CalaverasReservoirSampler> samplers;
-        for(size_t i = nthreads; i--;samplers.emplace_back(n));
+        for(size_t i = nthreads; i--;samplers.emplace_back(n, seed++));
         std::deque<std::thread> threads;
         auto compute = [&samplers,nperblock,beg,end,ptr](auto blockid) {
             auto mystart = beg + nperblock * blockid;
             auto myend = std::min(mystart + nperblock, end);
-            if(ptr) samplers[blockid].add(mystart, myend, ptr + nperblock * blockid);
-            else    samplers[blockid].add(mystart, myend);
+            using myit = decltype(mystart);
+            if constexpr(std::is_integral_v<myit> && !std::is_pointer_v<myit>) {
+                if(ptr) samplers[blockid].add(mystart, myend, ptr + nperblock * blockid);
+                else    samplers[blockid].add(mystart, myend);
+            } else {
+                if(ptr) samplers[blockid].add(mystart, myend, ptr + nperblock * blockid);
+                else    samplers[blockid].add(mystart, myend);
+            }
         };
         for(size_t i = 0; i < nthreads; ++i)
             threads.emplace_back(compute, i);
@@ -203,6 +203,52 @@ public:
             c.emplace_back(std::move(s.heap()));
         }
         return queue_reduce(c, threads, nthreads);
+    }
+#endif
+    template<typename It, typename It2, typename WIT=double *>
+    static auto parallel_create(It beg, It2 end, size_t n, int nthreads=4, WIT ptr=static_cast<WIT>(nullptr), uint64_t seed=0, size_t threshold=100) {
+        static constexpr bool using_ints = std::is_integral_v<It> && std::is_integral_v<It2>;
+        auto dist = end - beg;
+        if(dist < threshold || nthreads <= 1) {
+            CalaverasReservoirSampler sampler(n, seed);
+            if constexpr(using_ints)
+                sampler.add_range(beg, end, ptr);
+            else
+                sampler.add(beg, end, ptr);
+            return std::move(sampler.container());
+        }
+        auto nperblock = (dist + (nthreads - 1) ) / nthreads;
+        std::vector<CalaverasReservoirSampler> samplers;
+        for(size_t i = nthreads; i--;samplers.emplace_back(n, seed++));
+        std::deque<std::thread> threads;
+        auto compute = [&samplers,nperblock,beg,end,ptr](auto blockid) {
+            auto mystart = beg + nperblock * blockid;
+            auto myend = std::min(mystart + nperblock, end);
+            using myit = decltype(mystart);
+            if constexpr(std::is_integral_v<myit> && !std::is_pointer_v<myit>) {
+                if(ptr) samplers[blockid].add_range(mystart, myend, ptr + nperblock * blockid);
+                else    samplers[blockid].add_range(mystart, myend);
+            } else {
+                if(ptr) samplers[blockid].add(mystart, myend, ptr + nperblock * blockid);
+                else    samplers[blockid].add(mystart, myend);
+            }
+        };
+        for(size_t i = 0; i < nthreads; ++i)
+            threads.emplace_back(compute, i);
+        for(auto &x: threads)
+            x.join();
+        threads.clear();
+        std::vector<CType> c;
+        c.reserve(nthreads);
+        for(auto &s: samplers) {
+            c.emplace_back(std::move(s.heap()));
+        }
+        return queue_reduce(c, threads, nthreads);
+    }
+    template<typename WIT>
+    static auto parallel_sample_weights(WIT it, WIT it2, size_t n, int nthreads=4, uint64_t seed=0, size_t threshold=100) {
+        auto diff = std::distance(it, it2);
+        return parallel_create(size_t(0), size_t(diff), n, nthreads, it, seed, threshold);
     }
     bool add(T x, double weight=1.) {
         std::uniform_real_distribution<double> urd;
