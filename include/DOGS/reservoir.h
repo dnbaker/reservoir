@@ -115,7 +115,7 @@ typename T::container_type queue_reduce(std::vector<T> &queues, std::deque<std::
             }
         };
         for(unsigned subchunk = 0; subchunk < nchunks; ++subchunk) {
-            if(threads.size() == nt) {
+            if(threads.size() == unsigned(nt)) {
                 threads.front().join();
                 threads.pop_front();
             }
@@ -171,7 +171,7 @@ public:
     static auto parallel_create(It beg, It2 end, size_t n, int nthreads=4, WIT ptr=static_cast<WIT>(nullptr), uint64_t seed=0, size_t threshold=100) {
         static constexpr bool using_ints = std::is_integral_v<It> && std::is_integral_v<It2>;
         auto dist = end - beg;
-        if(dist < threshold || nthreads <= 1) {
+        if(dist < (long long signed)threshold || nthreads <= 1) {
             CalaverasReservoirSampler sampler(n, seed);
             if constexpr(using_ints)
                 sampler.add_range(beg, end, ptr);
@@ -195,7 +195,7 @@ public:
                 else    samplers[blockid].add(mystart, myend);
             }
         };
-        for(size_t i = 0; i < nthreads; ++i)
+        for(int i = 0; i < nthreads; ++i)
             threads.emplace_back(compute, i);
         for(auto &x: threads)
             x.join();
