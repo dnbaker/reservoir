@@ -212,6 +212,22 @@ public:
         auto diff = std::distance(it, it2);
         return parallel_create(size_t(0), size_t(diff), n, nthreads, it, seed, threshold);
     }
+    template<typename WIT>
+    static auto sample1(WIT it, WIT it2, uint64_t seed=0, size_t threshold=100) {
+        auto diff = std::distance(it, it2);
+        CalaverasReservoirSampler<T> ret(1);
+        for(long int i = 0; i < diff; ++i)
+            ret.add(i++, *it++);
+        return ret.container().front().second;
+    }
+    template<typename WIT>
+    static auto parallel_sample1(WIT it, WIT it2, int nthreads=4, uint64_t seed=0, size_t threshold=100) {
+        if(nthreads <= 1) {
+            return sample1(it, it2, seed, threshold);
+        }
+        auto diff = std::distance(it, it2);
+        return parallel_create(size_t(0), size_t(diff), 1, nthreads, it, seed, threshold).front().second;
+    }
     bool add(T x, double weight=1.) {
         std::uniform_real_distribution<double> urd;
         if(weight <= 0.) return false;
