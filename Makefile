@@ -4,7 +4,7 @@
 CXX?=g++
 INCLUDE=-I. -Iinclude
 STD=-std=c++17
-FLAGS=-O3 -Wall -Wextra $(INCLUDE) $(STD) -Werror
+FLAGS=-O3 -Wall -Wextra $(INCLUDE) $(STD) -pthread
 
 EX=pri rsv crsv parallel_sampling
 all: $(EX)
