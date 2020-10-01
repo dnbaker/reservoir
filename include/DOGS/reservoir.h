@@ -2,6 +2,7 @@
 #define RESERVOIR_DOGS_H__
 #include "./shared.h"
 #include <queue>
+#include <thread>
 
 namespace DOGS {
 inline namespace reservoir {
@@ -78,6 +79,54 @@ public:
     const CType &container() const {return v_;}
 };
 
+template<typename T>
+T __roundup(T n) {
+    --n;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n |= n >> 32;
+    return ++n;
+}
+
+template<typename Q>
+void queue_reduce_pair(Q &destchunk, Q &srcchunk) {
+    for(const auto v: srcchunk.getc()) {
+        destchunk.push(v);
+        destchunk.pop();
+    }
+}
+
+template<typename T>
+typename T::container_type queue_reduce(std::vector<T> &queues, std::deque<std::thread> &threads, int nt) {
+    size_t n = queues.size(), nru = __roundup(n), nrul = size_t(std::log2(nru));
+    for(unsigned i = 0; i < nrul; ++i) {
+        unsigned chunksize = 1 << (i + 1);
+        unsigned nchunks = nru >> (i + 1);
+        unsigned chunkstep = 1 << i;
+        auto compute = [&](unsigned myid) {
+            auto destchunkid = chunksize * myid;
+            auto &destchunk = queues.at(destchunkid);
+            for(unsigned ochunkid = chunkstep; ochunkid < chunksize; ochunkid += chunkstep) {
+                if(ochunkid + destchunkid < queues.size())
+                    queue_reduce_pair(destchunk, queues[ochunkid + destchunkid]);
+            }
+        };
+        for(unsigned subchunk = 0; subchunk < nchunks; ++subchunk) {
+            if(threads.size() == nt) {
+                threads.front().join();
+                threads.pop_front();
+            }
+            threads.emplace_back(compute, subchunk);
+        }
+        for(auto &t: threads) t.join();
+        threads.clear();
+    }
+    return std::move(queues.front().getc());
+}
+
 template<typename T, typename RNG=wy::WyRand<uint32_t>,
          typename IT=uint32_t,
          typename...VectorTemplateArgs>
@@ -108,13 +157,54 @@ public:
         v_.getc().reserve(n);
     }
     void seed(uint64_t s) {rng_.seed(s);}
+    template<typename IT1, typename IT2, typename WIT=double>
+    void add(IT1 beg, IT2 end, WIT *wptr=static_cast<WIT *>(nullptr)) {
+        if(wptr)
+            while(beg != end) add(*beg++, *wptr++);
+        else
+             while(beg != end) add(*beg++);
+    }
     template<typename IT1, typename IT2, typename WIT>
     void add(IT1 beg, IT2 end, WIT wbeg) {
         while(beg != end) add(*beg++, *wbeg++);
     }
+#if 0
     template<typename IT1, typename IT2>
     void add(IT1 beg, IT2 end) {
         while(beg != end) add(*beg++);
+    }
+#endif
+    template<typename It, typename WIT=double>
+    static auto parallel_create(It beg, It end, size_t n, int nthreads=4, WIT *ptr=static_cast<WIT *>(nullptr), size_t threshold=100) {
+        auto dist = std::distance(beg, end);
+        if(dist < threshold || nthreads <= 1) {
+            CalaverasReservoirSampler sampler(n);
+            sampler.add(beg, end, ptr);
+            return std::move(sampler.container());
+        }
+        auto nperblock = (dist + (nthreads - 1) ) / nthreads;
+        std::vector<CalaverasReservoirSampler> samplers;
+        for(size_t i = nthreads; i--;samplers.emplace_back(n));
+        std::deque<std::thread> threads;
+        std::fprintf(stderr, "nperblock: %u. nblocks: %u\n", nperblock, nthreads);
+        auto compute = [&samplers,nperblock,beg,end,ptr](auto blockid) {
+            auto mystart = beg + nperblock * blockid;
+            auto myend = std::min(mystart + nperblock, end);
+            std::fprintf(stderr, "Sampling for blockid %u. Going from %zd to %zd\n", int(blockid), std::distance(beg, mystart), std::distance(beg, myend));
+            if(ptr) samplers[blockid].add(mystart, myend, ptr + nperblock * blockid);
+            else    samplers[blockid].add(mystart, myend);
+        };
+        for(size_t i = 0; i < nthreads; ++i)
+            threads.emplace_back(compute, i);
+        for(auto &x: threads)
+            x.join();
+        threads.clear();
+        std::vector<CType> c;
+        c.reserve(nthreads);
+        for(auto &s: samplers) {
+            c.emplace_back(std::move(s.heap()));
+        }
+        return queue_reduce(c, threads, nthreads);
     }
     bool add(T x, double weight=1.) {
         std::uniform_real_distribution<double> urd;
@@ -136,34 +226,14 @@ public:
         }
         return false;
     }
-#if 0
-    bool add(T &x, double weight=1.) {
-        std::uniform_real_distribution<double> urd;
-        if(weight <= 0.) return false;
-        if(size() < n()) {
-            v_.push(std::make_pair(std::pow(urd(rng_), 1. / weight), std::move(x)));
-            if(v_.size() == n_) {
-                x_ = std::log(urd(rng_)) / std::log(v_.top().first);
-            }
-            return true;
-        } else if((x_ -= weight) <= 0.) {
-            auto t = std::pow(v_.top().first, weight);
-            v_.pop();
-            auto t1 = urd(rng_) * (1. - t) + t; // Uniform between t and 1
-            auto r = std::pow(t1, 1. / weight);
-            v_.push(std::make_pair(r, std::move(x)));
-            x_ = std::log(urd(rng_)) / std::log(v_.top().first);
-            return true;
-        }
-        return false;
-    }
-#endif
     size_t size() const {
         using std::size;
         return size(v_);
     }
     size_t n()  const {return n_;}
     bool full() const {return n_ == size();}
+    auto &heap()       {return v_;}
+    const auto &heap() const {return v_;}
     auto &container()       {return v_.getc();}
     const auto &container() const {return v_.getc();}
 };
