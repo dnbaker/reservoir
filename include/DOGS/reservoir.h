@@ -186,11 +186,9 @@ public:
         std::vector<CalaverasReservoirSampler> samplers;
         for(size_t i = nthreads; i--;samplers.emplace_back(n));
         std::deque<std::thread> threads;
-        std::fprintf(stderr, "nperblock: %u. nblocks: %u\n", nperblock, nthreads);
         auto compute = [&samplers,nperblock,beg,end,ptr](auto blockid) {
             auto mystart = beg + nperblock * blockid;
             auto myend = std::min(mystart + nperblock, end);
-            std::fprintf(stderr, "Sampling for blockid %u. Going from %zd to %zd\n", int(blockid), std::distance(beg, mystart), std::distance(beg, myend));
             if(ptr) samplers[blockid].add(mystart, myend, ptr + nperblock * blockid);
             else    samplers[blockid].add(mystart, myend);
         };
