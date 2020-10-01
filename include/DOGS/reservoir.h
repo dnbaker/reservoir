@@ -184,8 +184,9 @@ public:
         for(size_t i = nthreads; i--;samplers.emplace_back(n, seed++));
         std::deque<std::thread> threads;
         auto compute = [&samplers,nperblock,beg,end,ptr](auto blockid) {
+            using ct = std::common_type_t<It, It2>;
             auto mystart = beg + nperblock * blockid;
-            auto myend = std::min(mystart + nperblock, end);
+            auto myend = std::min(ct(mystart + nperblock), ct(end));
             using myit = decltype(mystart);
             if constexpr(std::is_integral_v<myit> && !std::is_pointer_v<myit>) {
                 if(ptr) samplers[blockid].add_range(mystart, myend, ptr + nperblock * blockid);
