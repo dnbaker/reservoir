@@ -4,6 +4,7 @@
 #include <random>
 #include <type_traits>
 #include <cstdlib>
+#include <cstdint>
 #include <cassert>
 #include "./div.h"
 #include "aesctr/wy.h"
@@ -11,6 +12,8 @@
 namespace DOGS {
 inline namespace shared {
 using std::size_t;
+using std::int64_t;
+using std::uint64_t;
 
 template<typename C>
 struct Emplacer {

@@ -170,8 +170,8 @@ public:
     template<typename It, typename It2, typename WIT=double *>
     static auto parallel_create(It beg, It2 end, size_t n, int nthreads=4, WIT ptr=static_cast<WIT>(nullptr), uint64_t seed=0, size_t threshold=100) {
         static constexpr bool using_ints = std::is_integral_v<It> && std::is_integral_v<It2>;
-        auto dist = end - beg;
-        if(dist < (long long signed)threshold || nthreads <= 1) {
+        int64_t dist = end - beg;
+        if(dist < (int64_t)threshold || nthreads <= 1) {
             CalaverasReservoirSampler sampler(n, seed);
             if constexpr(using_ints)
                 sampler.add_range(beg, end, ptr);
