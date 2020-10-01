@@ -162,49 +162,11 @@ public:
     }
     template<typename IT1, typename WIT=double *>
     void add(IT1 beg, IT1 end, WIT wbeg=static_cast<WIT>(nullptr)) {
-        using OT = std::integral_constant<bool, std::is_integral_v<IT1>>;
         if(wbeg)
             while(beg != end) add(*beg++, *wbeg++);
         else
              while(beg != end) add(*beg++);
     }
-#if 0
-    static auto parallel_create(int64_t beg, int64_t end, size_t n, int nthreads=4, WIT *ptr=static_cast<WIT *>(nullptr), uint64_t seed=0, size_t threshold=100) {
-        auto dist = std::distance(beg, end);
-        if(dist < threshold || nthreads <= 1) {
-            CalaverasReservoirSampler sampler(n, seed);
-            sampler.add(beg, end, ptr);
-            return std::move(sampler.container());
-        }
-        auto nperblock = (dist + (nthreads - 1) ) / nthreads;
-        std::vector<CalaverasReservoirSampler> samplers;
-        for(size_t i = nthreads; i--;samplers.emplace_back(n, seed++));
-        std::deque<std::thread> threads;
-        auto compute = [&samplers,nperblock,beg,end,ptr](auto blockid) {
-            auto mystart = beg + nperblock * blockid;
-            auto myend = std::min(mystart + nperblock, end);
-            using myit = decltype(mystart);
-            if constexpr(std::is_integral_v<myit> && !std::is_pointer_v<myit>) {
-                if(ptr) samplers[blockid].add(mystart, myend, ptr + nperblock * blockid);
-                else    samplers[blockid].add(mystart, myend);
-            } else {
-                if(ptr) samplers[blockid].add(mystart, myend, ptr + nperblock * blockid);
-                else    samplers[blockid].add(mystart, myend);
-            }
-        };
-        for(size_t i = 0; i < nthreads; ++i)
-            threads.emplace_back(compute, i);
-        for(auto &x: threads)
-            x.join();
-        threads.clear();
-        std::vector<CType> c;
-        c.reserve(nthreads);
-        for(auto &s: samplers) {
-            c.emplace_back(std::move(s.heap()));
-        }
-        return queue_reduce(c, threads, nthreads);
-    }
-#endif
     template<typename It, typename It2, typename WIT=double *>
     static auto parallel_create(It beg, It2 end, size_t n, int nthreads=4, WIT ptr=static_cast<WIT>(nullptr), uint64_t seed=0, size_t threshold=100) {
         static constexpr bool using_ints = std::is_integral_v<It> && std::is_integral_v<It2>;
