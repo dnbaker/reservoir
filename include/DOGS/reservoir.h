@@ -3,9 +3,12 @@
 #include "./shared.h"
 #include <queue>
 #include <thread>
+#include <mutex>
 
 namespace DOGS {
 inline namespace reservoir {
+
+// Consider log-transforming and keeping the largest (or -log and keeping the smallest)
 
 template<typename T, typename RNG=wy::WyRand<uint32_t>,
          template<typename...> class Container=std::vector,
@@ -93,6 +96,7 @@ T __roundup(T n) {
 
 template<typename Q>
 void queue_reduce_pair(Q &destchunk, Q &srcchunk) {
+    if(srcchunk.size() > destchunk.size()) std::swap(destchunk, srcchunk);
     for(const auto v: srcchunk.getc()) {
         destchunk.push(v);
         destchunk.pop();
@@ -108,11 +112,10 @@ typename T::container_type queue_reduce(std::vector<T> &queues, std::deque<std::
         unsigned chunkstep = 1 << i;
         auto compute = [&](unsigned myid) {
             auto destchunkid = chunksize * myid;
-            auto &destchunk = queues.at(destchunkid);
-            for(unsigned ochunkid = chunkstep; ochunkid < chunksize; ochunkid += chunkstep) {
+            auto &destchunk = queues[destchunkid];
+            for(unsigned ochunkid = chunkstep; ochunkid < chunksize; ochunkid += chunkstep)
                 if(ochunkid + destchunkid < queues.size())
                     queue_reduce_pair(destchunk, queues[ochunkid + destchunkid]);
-            }
         };
         for(unsigned subchunk = 0; subchunk < nchunks; ++subchunk) {
             if(threads.size() == unsigned(nt)) {
@@ -222,12 +225,40 @@ public:
         return ret.container().front().second;
     }
     template<typename WIT>
-    static auto parallel_sample1(WIT it, WIT it2, int nthreads=4, uint64_t seed=0, size_t threshold=100) {
+    static uint64_t parallel_sample1(WIT it, WIT it2, int nthreads=4, uint64_t seed=0, size_t threshold=100) {
+        std::uniform_real_distribution<double> urd;
         if(nthreads <= 1) {
-            return sample1(it, it2, seed, threshold);
+            wy::WyRand<uint64_t, 4> rng(seed);
+            std::pair<double, uint64_t> best(-std::numeric_limits<double>::max(), -1u);
+            for(uint64_t id = 0;it != it2;++it, ++id) {
+                auto bestv = std::pow(urd(rng), 1. / *it);
+                if(bestv > best.first) best = {bestv, id};
+            }
+            return best.second;
         }
         auto diff = std::distance(it, it2);
-        return parallel_create(size_t(0), size_t(diff), 1, nthreads, it, seed, threshold).front().second;
+        std::vector<std::thread> threads;
+        threads.reserve(nthreads);
+        auto nperblock = (diff + nthreads - 1) / nthreads;
+        std::mutex mtx;
+        std::pair<double, uint64_t> globalbest({-std::numeric_limits<double>::max(), uint64_t(0)});
+        auto compute = [seed,nperblock,it,it2,&globalbest,&mtx,&urd](size_t i) {
+            auto beg = it + (i * nperblock), end = std::min(beg + nperblock, it2);
+            wy::WyRand<uint64_t, 4> rng(seed + i);
+            std::pair<double, uint64_t> best{-std::numeric_limits<double>::max(), uint64_t(0)};
+            for(size_t id = 0;beg != end;++beg, ++id)
+                if(const double v = std::pow(urd(rng), 1. / *beg);v > best.first)
+                    best = {v, id};
+            if(best.first > globalbest.first) {
+                std::lock_guard<std::mutex> lock(mtx);
+                if(best.first > globalbest.first) // Check, in case value changed
+                    globalbest = best;
+            }
+        };
+        for(size_t i = 0; i < nthreads; ++i)
+            threads.emplace_back(compute, i);
+        for(auto &i: threads) i.join();
+        return globalbest.second;
     }
     bool add(T x, double weight=1.) {
         std::uniform_real_distribution<double> urd;
